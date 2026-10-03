@@ -1,0 +1,7 @@
+node_modules
+*.json.local
+# MAI pubblicare documenti o dati estratti
+*.pdf
+dati*.json
+dataset*.json
+data/
