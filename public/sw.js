@@ -12,7 +12,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   // pagina: rete prima (aggiornamenti), cache se offline; risorse: cache prima
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then((r) => (caches.open(CACHE).then((c) => c.put('./index.html', r.clone())), r)).catch(() => caches.match('./index.html')));
+    e.respondWith(fetch(req, { cache: 'no-store' }).then((r) => (caches.open(CACHE).then((c) => c.put('./index.html', r.clone())), r)).catch(() => caches.match('./index.html')));
     return;
   }
   e.respondWith(
