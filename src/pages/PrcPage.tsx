@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { LuChevronRight, LuClipboardList, LuDownload, LuFilter, LuX } from 'react-icons/lu';
-import { displayManual, PageHeader, StatusBadge } from '../components/ui';
+import { LuChevronDown, LuChevronRight, LuClipboardList, LuDownload, LuFilter, LuX } from 'react-icons/lu';
+import { displayManual, PageHeader, STATUS_STYLE, StatusBadge } from '../components/ui';
 import { STATUS_META } from '../lib/engine';
 import { INTERVALS, intervalRank, norm, OS_LABEL } from '../lib/text';
 import { Link, navigate, useRoute } from '../lib/router';
@@ -23,7 +23,14 @@ export function activityType(a: string): string {
 const manualState = (l: ActivityLink) =>
   !l.organRefs.length ? 'nessuno' : l.organRefs.every((o) => o.inGeneralManual) ? 'generale' : l.organRefs.some((o) => !o.inGeneralManual && o.importedDocId) ? 'caricato' : 'mancante';
 
-const FILTERS = ['q', 'sistema', 'organo', 'livello', 'tipo', 'os', 'compet', 'stato', 'manuale'] as const;
+const FILTERS = ['q', 'sistema', 'organo', 'tipo', 'os', 'compet', 'stato', 'manuale'] as const;
+const LEVELS = ['C3', 'C4', 'C5', 'C6', 'C7'] as const;
+const ORDER = ['C2', 'C3', 'C4', 'C5', 'C6', 'C7'];
+// livello cumulativo: C5 = C2 + C3 + C4 + C5 (le righe senza codice compaiono sempre)
+export function inLevel(iv: string | null, level: string) {
+  const i = ORDER.indexOf(iv || '');
+  return i < 0 || i <= ORDER.indexOf(level);
+}
 
 export function exportCsv(rows: ActivityLink[]) {
   const head = ['Codice', 'Attività', 'Componente', 'Sistema', 'Livello', 'Frequenza', 'OS', 'Competenza', 'Stato', 'N. Manuale Generale', 'Capitolo Manuale Generale', 'Pagina', 'Manuale organo', 'Capitolo organo', 'Pagina procedura', 'Anomalie', 'Pagina PRC'];
@@ -64,11 +71,24 @@ export function PrcPage() {
   const { model } = useStore();
   const { query } = useRoute();
   const [showF, setShowF] = useState(false);
+  const [closed, setClosed] = useState<Record<string, boolean>>({});
+  const saved = (() => {
+    try {
+      return localStorage.getItem('prc-level') || 'C7';
+    } catch {
+      return 'C7';
+    }
+  })();
+  const level = query.get('livello') && (LEVELS as readonly string[]).includes(query.get('livello')!) ? query.get('livello')! : saved;
   const f = Object.fromEntries(FILTERS.map((k) => [k, query.get(k) || ''])) as Record<(typeof FILTERS)[number], string>;
   const set = (k: string, v: string) => {
     const p = new URLSearchParams(query);
     if (v) p.set(k, v);
     else p.delete(k);
+    if (k === 'livello')
+      try {
+        localStorage.setItem('prc-level', v);
+      } catch {}
     navigate(`/prc?${p.toString()}`, true);
   };
 
@@ -78,7 +98,6 @@ export function PrcPage() {
     return {
       sistema: uniq(model.links.map((l) => l.system)),
       organo: uniq(model.links.map((l) => l.organ)),
-      livello: uniq(model.links.map((l) => l.prc.interval)).sort((a, b) => intervalRank(a) - intervalRank(b)),
       tipo: uniq(model.links.map((l) => activityType(l.prc.activity))),
       compet: uniq(model.links.map((l) => l.prc.compet)),
     };
@@ -88,10 +107,10 @@ export function PrcPage() {
     if (!model) return [];
     const nq = norm(f.q);
     return model.links.filter((l) => {
+      if (!inLevel(l.prc.interval, level)) return false;
       if (nq && !norm(`${l.code} ${l.prc.activity} ${l.prc.component} ${l.organ} ${l.system}`).includes(nq)) return false;
       if (f.sistema && l.system !== f.sistema) return false;
       if (f.organo && l.organ !== f.organo) return false;
-      if (f.livello && l.prc.interval !== f.livello) return false;
       if (f.tipo && activityType(l.prc.activity) !== f.tipo) return false;
       if (f.os && l.prc.os !== f.os) return false;
       if (f.compet && l.prc.compet !== f.compet) return false;
@@ -99,10 +118,16 @@ export function PrcPage() {
       if (f.manuale && manualState(l) !== f.manuale) return false;
       return true;
     });
-  }, [model, query.toString()]);
+  }, [model, query.toString(), level]);
 
   if (!model || !opts) return <Onboarding />;
-  const active = FILTERS.filter((k) => f[k]);
+  const active = FILTERS.filter((k) => f[k] && k !== 'q');
+  const countFor = (lv: string) => model.links.filter((l) => inLevel(l.prc.interval, lv)).length;
+  const groups = [...ORDER, 'altro']
+    .map((iv) => ({ iv, items: rows.filter((l) => (ORDER.includes(l.prc.interval || '') ? l.prc.interval === iv : iv === 'altro')) }))
+    .filter((g) => g.items.length);
+  const included = ORDER.slice(0, ORDER.indexOf(level) + 1);
+
   const Sel = ({ k, label, options, render }: { k: string; label: string; options: string[]; render?: (v: string) => string }) => (
     <label className="block min-w-0">
       <span className="label">{label}</span>
@@ -116,138 +141,143 @@ export function PrcPage() {
       </select>
     </label>
   );
-  const filters = (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-      <Sel k="sistema" label="Sistema" options={opts.sistema} />
-      <Sel k="organo" label="Organo" options={opts.organo} />
-      <Sel k="livello" label="Livello / frequenza" options={opts.livello} render={(v) => `${v} – ${INTERVALS[v] || ''}`} />
-      <Sel k="tipo" label="Tipo attività" options={opts.tipo} />
-      <Sel k="os" label="Categoria (OS)" options={['R', 'S', 'C']} render={(v) => `${v} – ${OS_LABEL[v]}`} />
-      <Sel k="compet" label="Competenza" options={opts.compet} />
-      <Sel k="stato" label="Stato documentazione" options={['complete', 'partial', 'verify', 'missing']} render={(v) => STATUS_META[v as Status].label} />
-      <Sel
-        k="manuale"
-        label="Manuale organo"
-        options={['caricato', 'mancante', 'generale', 'nessuno']}
-        render={(v) => ({ caricato: 'Collegato e caricato', mancante: 'Indicato ma non caricato', generale: 'Procedura nel Manuale Generale', nessuno: 'Nessuno indicato' })[v] || v}
-      />
-    </div>
-  );
+
   return (
     <div>
       <PageHeader
         icon={<LuClipboardList />}
-        title="PRC C7 – Piano di manutenzione"
-        subtitle="23.4.5/C7-000/MP rev. 01 · manutenzione biennale (200.000 km). Il C7 comprende anche le attività dei livelli inferiori (C2–C6): il prefisso del codice indica la periodicità propria."
+        title="Piano di manutenzione"
+        subtitle="Scegli il livello: ogni livello comprende anche tutti quelli inferiori (C4 = C3 + C4, C5 = C3 + C4 + C5, …)."
         actions={
           <button className="btn btn-ghost" onClick={() => exportCsv(rows)}>
             <LuDownload /> Esporta CSV
           </button>
         }
       />
-      <div className="card mb-4 p-4">
-        <div className="flex flex-wrap gap-3">
-          <input className="input min-w-[220px] flex-1" placeholder="Filtra per codice, attività, componente…" value={f.q} onChange={(e) => set('q', e.target.value)} />
-          <button className="btn btn-ghost lg:hidden" onClick={() => setShowF(!showF)}>
-            <LuFilter /> Filtri {active.filter((k) => k !== 'q').length ? `(${active.filter((k) => k !== 'q').length})` : ''}
-          </button>
-        </div>
-        <div className={`mt-4 ${showF ? '' : 'hidden'} lg:block`}>{filters}</div>
-        {active.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted">{rows.length} attività su {model.links.length}</span>
-            <button className="chip hover:bg-canvas" onClick={() => navigate('/prc')}>
-              <LuX /> Azzera filtri
-            </button>
+
+      {/* livello di manutenzione */}
+      <div className="card mb-4 p-4 sm:p-5">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <label className="block md:w-72">
+            <span className="label">Livello di manutenzione</span>
+            <div className="relative mt-1">
+              <select
+                className="input appearance-none !py-3 !pr-10 text-[17px] font-bold text-brand-700"
+                value={level}
+                onChange={(e) => set('livello', e.target.value)}
+              >
+                {LEVELS.map((lv) => (
+                  <option key={lv} value={lv}>
+                    {lv} – {INTERVALS[lv]} ({countFor(lv)})
+                  </option>
+                ))}
+              </select>
+              <LuChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-lg text-muted" />
+            </div>
+          </label>
+          <div className="hidden flex-1 gap-1.5 rounded-xl bg-canvas p-1 md:flex">
+            {LEVELS.map((lv) => (
+              <button
+                key={lv}
+                onClick={() => set('livello', lv)}
+                className={`flex-1 rounded-lg px-3 py-2 text-center transition ${lv === level ? 'bg-brand-600 text-white shadow-sm' : included.includes(lv) ? 'bg-brand-100 text-brand-700' : 'text-muted hover:bg-white'}`}
+              >
+                <span className="code block text-base font-bold">{lv}</span>
+                <span className="block text-[11px] opacity-80">{countFor(lv)} attività</span>
+              </button>
+            ))}
           </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-sm">
+          <span className="text-muted">Incluse:</span>
+          {included.map((iv) => (
+            <span key={iv} className="chip code bg-brand-50 text-brand-700">
+              {iv}
+            </span>
+          ))}
+          <span className="ml-1 font-semibold">= {rows.length} attività</span>
+        </div>
+      </div>
+
+      {/* ricerca e altri filtri */}
+      <div className="mb-5 flex flex-wrap gap-2">
+        <input className="input min-w-[200px] flex-1" placeholder="Cerca codice, attività, componente…" value={f.q} onChange={(e) => set('q', e.target.value)} />
+        <button className={`btn ${showF || active.length ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShowF(!showF)}>
+          <LuFilter /> Altri filtri{active.length ? ` (${active.length})` : ''}
+        </button>
+        {(active.length > 0 || f.q) && (
+          <button className="btn btn-ghost" onClick={() => navigate(`/prc?livello=${level}`, true)}>
+            <LuX /> Azzera
+          </button>
         )}
       </div>
-
-      {/* tabella (desktop) */}
-      <div className="card hidden overflow-hidden md:block">
-        <div className="scroll-thin overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-canvas/70 text-xs uppercase tracking-wider text-muted">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Codice</th>
-                <th className="px-4 py-3 font-semibold">Attività</th>
-                <th className="px-4 py-3 font-semibold">Organo</th>
-                <th className="px-4 py-3 font-semibold">Frequenza</th>
-                <th className="px-4 py-3 font-semibold">Livello</th>
-                <th className="px-4 py-3 font-semibold">Riferimento</th>
-                <th className="px-4 py-3 font-semibold">Stato</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {rows.map((l) => {
-                const o = l.organRefs.find((x) => !x.inGeneralManual) || l.organRefs[0];
-                return (
-                  <tr key={l.prc.id} className="cursor-pointer hover:bg-brand-50/40" onClick={() => navigate(`/attivita/${l.prc.id}`)}>
-                    <td className="code whitespace-nowrap px-4 py-3 font-semibold text-brand-700">
-                      {l.code}
-                      {l.prc.highlight && <span className="ml-1 rounded bg-[#fff59d] px-1 text-[10px] text-ink">evid.</span>}
-                    </td>
-                    <td className="max-w-[420px] px-4 py-3">
-                      <div className="line-clamp-2">{l.prc.activity}</div>
-                      <div className="mt-0.5 truncate text-xs text-muted">{l.prc.component}</div>
-                    </td>
-                    <td className="max-w-[200px] px-4 py-3">
-                      <div className="line-clamp-2">{l.organ}</div>
-                      <div className="text-xs text-muted">{l.system}</div>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs">{INTERVALS[l.prc.interval || ''] || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className="chip code">{l.prc.interval}</span>
-                      {l.prc.os && <span className="ml-1 text-xs text-muted" title={OS_LABEL[l.prc.os]}>{l.prc.os}</span>}
-                    </td>
-                    <td className="max-w-[230px] px-4 py-3 text-xs">
-                      {l.generalRef ? (
-                        <div>
-                          Man. Gen. <b>{l.generalRef.chapter}</b> · p. {l.generalRef.itemPage || l.generalRef.page}
-                        </div>
-                      ) : (
-                        <div className="text-miss">Man. Gen. non trovato</div>
-                      )}
-                      {o && !o.inGeneralManual && (
-                        <div className={`truncate ${o.importedDocId ? 'text-ok' : 'text-muted'}`} title={displayManual(o.manualName)}>
-                          {displayManual(o.manualName)}
-                          {o.chapter ? ` · ${o.chapter}` : ''}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={l.status} short />
-                    </td>
-                    <td className="px-3 py-3 text-muted">
-                      <LuChevronRight />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {showF && (
+        <div className="card mb-5 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Sel k="sistema" label="Sistema" options={opts.sistema} />
+          <Sel k="organo" label="Organo" options={opts.organo} />
+          <Sel k="tipo" label="Tipo attività" options={opts.tipo} />
+          <Sel k="os" label="Categoria (OS)" options={['R', 'S', 'C']} render={(v) => `${v} – ${OS_LABEL[v]}`} />
+          <Sel k="compet" label="Competenza" options={opts.compet} />
+          <Sel k="stato" label="Stato documentazione" options={['complete', 'partial', 'verify', 'missing']} render={(v) => STATUS_META[v as Status].label} />
+          <Sel
+            k="manuale"
+            label="Manuale organo"
+            options={['caricato', 'mancante', 'generale', 'nessuno']}
+            render={(v) => ({ caricato: 'Collegato e caricato', mancante: 'Indicato ma non caricato', generale: 'Procedura nel Manuale Generale', nessuno: 'Nessuno indicato' })[v] || v}
+          />
         </div>
-        {!rows.length && <div className="p-8 text-center text-sm text-muted">Nessuna attività con questi filtri.</div>}
-      </div>
+      )}
 
-      {/* schede (smartphone) */}
-      <ul className="space-y-2 md:hidden">
-        {rows.map((l) => (
-          <li key={l.prc.id}>
-            <Link to={`/attivita/${l.prc.id}`} className="card block p-4">
-              <div className="flex items-center justify-between gap-2">
-                <span className="code font-semibold text-brand-700">{l.code}</span>
-                <StatusBadge status={l.status} short />
-              </div>
-              <div className="mt-1 text-sm font-medium">{l.prc.activity}</div>
-              <div className="mt-1 text-xs text-muted">
-                {l.organ} · {INTERVALS[l.prc.interval || '']}
-              </div>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {/* elenco diviso per livello */}
+      <div className="space-y-4">
+        {groups.map((g) => {
+          const isClosed = closed[g.iv];
+          return (
+            <section key={g.iv} className="card overflow-hidden">
+              <button
+                className="flex w-full items-center gap-3 border-b border-line bg-canvas/60 px-4 py-3 text-left sm:px-5"
+                onClick={() => setClosed({ ...closed, [g.iv]: !isClosed })}
+              >
+                <span className="code rounded-lg bg-ink px-2 py-0.5 text-sm font-bold text-white">{g.iv === 'altro' ? '—' : g.iv}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold">{g.iv === 'altro' ? 'Senza codice di livello' : INTERVALS[g.iv]}</span>
+                </span>
+                <span className="text-sm text-muted">{g.items.length}</span>
+                <LuChevronDown className={`text-muted transition ${isClosed ? '-rotate-90' : ''}`} />
+              </button>
+              {!isClosed && (
+                <ul className="divide-y divide-line">
+                  {g.items.map((l) => {
+                    const o = l.organRefs.find((x) => !x.inGeneralManual) || l.organRefs[0];
+                    return (
+                      <li key={l.prc.id}>
+                        <Link to={`/attivita/${l.prc.id}`} className="flex items-start gap-3 px-4 py-3 hover:bg-brand-50/40 sm:px-5">
+                          <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${STATUS_STYLE[l.status].dot}`} title={STATUS_META[l.status].label} />
+                          <span className="code mt-0.5 w-[68px] shrink-0 text-sm font-semibold text-brand-700">{l.code}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[15px] font-medium leading-snug">{l.prc.activity}</span>
+                            <span className="mt-0.5 block text-xs text-muted">
+                              {l.organ}
+                              {l.prc.compet ? ` · ${l.prc.compet}` : ''}
+                              {l.generalRef ? ` · Man. Gen. ${l.generalRef.chapter} p. ${l.generalRef.itemPage || l.generalRef.page}` : ''}
+                              {o && !o.inGeneralManual ? ` · ${displayManual(o.manualName).slice(0, 40)}${o.chapter ? ' cap. ' + o.chapter : ''}` : ''}
+                            </span>
+                          </span>
+                          <span className="hidden sm:block">
+                            <StatusBadge status={l.status} short />
+                          </span>
+                          <LuChevronRight className="mt-1 shrink-0 text-muted" />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+        {!groups.length && <div className="card p-8 text-center text-sm text-muted">Nessuna attività con questi filtri.</div>}
+      </div>
     </div>
   );
 }
