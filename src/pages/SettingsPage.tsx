@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LuDatabase, LuDownload, LuSettings, LuShieldCheck, LuTrash2, LuUpload } from 'react-icons/lu';
 import { QuickImport } from '../components/QuickImport';
+import { InstallButton } from '../components/InstallButton';
 import { Card, fmtDate, Kv, PageHeader } from '../components/ui';
 import { requestPersist, storageEstimate } from '../lib/db';
 import { navigate } from '../lib/router';
@@ -29,7 +30,7 @@ export function SettingsPage() {
 
   return (
     <div className="max-w-4xl">
-      <PageHeader icon={<LuSettings />} title="Impostazioni" />
+      <PageHeader icon={<LuSettings />} title="Impostazioni" actions={<InstallButton />} />
       <div className="space-y-6">
         <Card title="Pacchetto dati">
           {ds ? (

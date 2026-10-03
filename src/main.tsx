@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
+import './components/InstallButton';
 import { Layout } from './components/Layout';
 import { StoreProvider, useStore } from './lib/store';
 import { useRoute } from './lib/router';

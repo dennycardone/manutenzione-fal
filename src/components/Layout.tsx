@@ -14,6 +14,7 @@ import {
 } from 'react-icons/lu';
 import { Link, useRoute } from '../lib/router';
 import { useStore } from '../lib/store';
+import { InstallButton } from './InstallButton';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LuHouse, match: (p: string) => p === '/' },
@@ -70,7 +71,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <aside className="no-print sticky top-0 hidden h-screen w-[264px] shrink-0 flex-col border-r border-line bg-white lg:flex">
         {brand}
         {nav}
-        <div className="mt-auto px-6 py-5 text-[11px] leading-relaxed text-muted">
+        <div className="mt-auto px-6 pt-4">
+          <InstallButton compact className="w-full justify-center" />
+        </div>
+        <div className="px-6 py-5 text-[11px] leading-relaxed text-muted">
           Dati e manuali restano su questo dispositivo.
           <br />
           Fonte primaria: i documenti originali.
@@ -83,9 +87,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </span>
           Manutenzione FAL
         </Link>
-        <button className="rounded-lg p-2 hover:bg-canvas" onClick={() => setOpen(true)} aria-label="Menu">
-          <LuMenu className="text-xl" />
-        </button>
+        <div className="flex items-center gap-1">
+          <InstallButton compact />
+          <button className="rounded-lg p-2 hover:bg-canvas" onClick={() => setOpen(true)} aria-label="Menu">
+            <LuMenu className="text-xl" />
+          </button>
+        </div>
       </header>
       {open && (
         <div className="fixed inset-0 z-50 bg-ink/40 lg:hidden" onClick={() => setOpen(false)}>
