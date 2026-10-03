@@ -49,7 +49,9 @@ export function ImportWizard() {
 
   useEffect(() => {
     if (step !== 'match' || !st.model) return;
-    const pre = preKey ? [preKey] : suggestions.filter((s) => s.score >= 1).map((s) => s.manual.key);
+    const top = suggestions[0];
+    const clear = top && top.score >= 0.85 && top.score - (suggestions[1]?.score || 0) >= 0.2;
+    const pre = preKey ? [preKey] : suggestions.filter((s) => s.score >= 1).map((s) => s.manual.key).concat(clear && top.score < 1 ? [top.manual.key] : []);
     setKeys(pre);
     const e = st.model.expectedManuals.find((x) => x.key === (pre[0] || ''));
     setTitle(e ? displayManual(e.names[0]) : file!.name.replace(/\.[^.]+$/, ''));

@@ -1,6 +1,6 @@
 // Service worker: rende l'app installabile e utilizzabile anche offline (solo il programma; i dati sono in IndexedDB).
-const CACHE = 'manutenzione-fal-1.0.0-202610031315';
-const SHELL = ['./', './index.html', './assets/app.js?v=1.0.0-202610031315', './assets/app.css?v=1.0.0-202610031315', './assets/pdf.worker.min.mjs', './icon.svg', './icon-192.png', './manifest.webmanifest'];
+const CACHE = 'manutenzione-fal-1.0.0-202610031320';
+const SHELL = ['./', './index.html', './assets/app.js?v=1.0.0-202610031320', './assets/app.css?v=1.0.0-202610031320', './assets/pdf.worker.min.mjs', './icon.svg', './icon-192.png', './manifest.webmanifest'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
