@@ -53,7 +53,11 @@ fs.cpSync(path.join(pdfjs, 'cmaps'), path.join(out, 'assets/cmaps'), { recursive
 fs.cpSync(path.join(pdfjs, 'standard_fonts'), path.join(out, 'assets/standard_fonts'), { recursive: true });
 
 fs.writeFileSync(path.join(out, 'index.html'), fs.readFileSync(path.join(root, 'src/index.html'), 'utf8').replaceAll('__V__', version));
-for (const f of fs.readdirSync(path.join(root, 'public'))) fs.copyFileSync(path.join(root, 'public', f), path.join(out, f));
+for (const f of fs.readdirSync(path.join(root, 'public'))) {
+  const src = path.join(root, 'public', f);
+  if (f === 'sw.js') fs.writeFileSync(path.join(out, f), fs.readFileSync(src, 'utf8').replaceAll('__V__', version));
+  else fs.copyFileSync(src, path.join(out, f));
+}
 fs.writeFileSync(path.join(out, '.nojekyll'), '');
 const size = (p) => (fs.statSync(path.join(out, p)).size / 1024).toFixed(0) + ' KB';
 console.log(`build ${version} → ${path.relative(root, out)}  app.js ${size('assets/app.js')}  app.css ${size('assets/app.css')}`);

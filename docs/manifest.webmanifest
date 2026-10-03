@@ -1,0 +1,17 @@
+{
+  "id": "/manutenzione-fal/docs/?app=manutenzione-fal",
+  "name": "Manutenzione FAL",
+  "short_name": "Manutenzione",
+  "description": "Consultazione documentazione di manutenzione: PRC C7 → PdM → Manuale Generale → manuali organo",
+  "lang": "it",
+  "start_url": "/manutenzione-fal/docs/?source=app",
+  "scope": "/manutenzione-fal/",
+  "display": "standalone",
+  "background_color": "#f4f6f9",
+  "theme_color": "#0b2a4a",
+  "icons": [
+    { "src": "/manutenzione-fal/docs/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/manutenzione-fal/docs/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/manutenzione-fal/docs/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
