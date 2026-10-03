@@ -2,30 +2,10 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0b2a4a" />
     <meta name="robots" content="noindex" />
     <title>Manutenzione FAL</title>
-    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./assets/app.css?v=__V__" />
+    <meta http-equiv="refresh" content="0; url=./docs/" />
+    <script>location.replace('./docs/' + location.hash);</script>
   </head>
-  <body>
-    <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;padding:40px;color:#5b6b80;text-align:center">Caricamento di Manutenzione FAL…</div></div>
-    <script>
-      (function () {
-        function show(msg) {
-          var r = document.getElementById('root');
-          if (r && r.querySelector('nav')) return;
-          r.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:640px;margin:40px auto;padding:20px;border:1px solid #f3c7c0;border-radius:14px;background:#fdecea;color:#0f1b2d"><b>L\'app non è riuscita ad avviarsi su questo browser.</b><div style="margin-top:8px;font-size:14px">Dettaglio tecnico (da inviare allo sviluppatore):</div><pre style="white-space:pre-wrap;font-size:12px;margin-top:6px">' + String(msg).replace(/</g, '&lt;') + '\n\n' + navigator.userAgent + '</pre></div>';
-        }
-        window.addEventListener('error', function (e) { show((e.message || 'Errore') + (e.filename ? ' @ ' + e.filename + ':' + e.lineno : '')); });
-        window.addEventListener('unhandledrejection', function (e) { show('Promise: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
-        setTimeout(function () { var b = document.getElementById('boot'); if (b) show('Timeout: il programma non si è caricato dopo 15 secondi (file assets/app.js non scaricato o non eseguito).'); }, 15000);
-      })();
-    </script>
-    <script type="module" src="./assets/app.js?v=__V__"></script>
-  </body>
+  <body><a href="./docs/">Apri Manutenzione FAL</a></body>
 </html>

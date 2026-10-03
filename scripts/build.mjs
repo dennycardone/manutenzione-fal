@@ -33,7 +33,7 @@ const twBase = path.dirname(require.resolve('tailwindcss/package.json'));
 const files = [];
 (function walk(d) { for (const f of fs.readdirSync(d)) { const p = path.join(d, f); fs.statSync(p).isDirectory() ? walk(p) : /\.(tsx?|html)$/.test(f) && files.push(p); } })(path.join(root, 'src'));
 const candidates = new Set();
-for (const f of [...files, path.join(root, 'index.html')]) for (const m of fs.readFileSync(f, 'utf8').matchAll(/[^\s"'`{}<>=;,()]+/g)) candidates.add(m[0]);
+for (const f of [...files, path.join(root, 'src/index.html')]) for (const m of fs.readFileSync(f, 'utf8').matchAll(/[^\s"'`{}<>=;,()]+/g)) candidates.add(m[0]);
 const css = fs.readFileSync(path.join(root, 'src/styles.css'), 'utf8');
 const compiler = await compile(css, {
   base: path.join(root, 'src'),
@@ -52,7 +52,7 @@ fs.copyFileSync(path.join(pdfjs, 'legacy/build/pdf.worker.min.mjs'), path.join(o
 fs.cpSync(path.join(pdfjs, 'cmaps'), path.join(out, 'assets/cmaps'), { recursive: true });
 fs.cpSync(path.join(pdfjs, 'standard_fonts'), path.join(out, 'assets/standard_fonts'), { recursive: true });
 
-fs.writeFileSync(path.join(out, 'index.html'), fs.readFileSync(path.join(root, 'index.html'), 'utf8').replaceAll('__V__', version));
+fs.writeFileSync(path.join(out, 'index.html'), fs.readFileSync(path.join(root, 'src/index.html'), 'utf8').replaceAll('__V__', version));
 for (const f of fs.readdirSync(path.join(root, 'public'))) fs.copyFileSync(path.join(root, 'public', f), path.join(out, f));
 fs.writeFileSync(path.join(out, '.nojekyll'), '');
 const size = (p) => (fs.statSync(path.join(out, p)).size / 1024).toFixed(0) + ' KB';
