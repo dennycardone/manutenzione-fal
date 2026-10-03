@@ -13,7 +13,19 @@
     <link rel="stylesheet" href="./assets/app.css?v=__V__" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot" style="font-family:system-ui,sans-serif;padding:40px;color:#5b6b80;text-align:center">Caricamento di Manutenzione FAL…</div></div>
+    <script>
+      (function () {
+        function show(msg) {
+          var r = document.getElementById('root');
+          if (r && r.querySelector('nav')) return;
+          r.innerHTML = '<div style="font-family:system-ui,sans-serif;max-width:640px;margin:40px auto;padding:20px;border:1px solid #f3c7c0;border-radius:14px;background:#fdecea;color:#0f1b2d"><b>L\'app non è riuscita ad avviarsi su questo browser.</b><div style="margin-top:8px;font-size:14px">Dettaglio tecnico (da inviare allo sviluppatore):</div><pre style="white-space:pre-wrap;font-size:12px;margin-top:6px">' + String(msg).replace(/</g, '&lt;') + '\n\n' + navigator.userAgent + '</pre></div>';
+        }
+        window.addEventListener('error', function (e) { show((e.message || 'Errore') + (e.filename ? ' @ ' + e.filename + ':' + e.lineno : '')); });
+        window.addEventListener('unhandledrejection', function (e) { show('Promise: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
+        setTimeout(function () { var b = document.getElementById('boot'); if (b) show('Timeout: il programma non si è caricato dopo 15 secondi (file assets/app.js non scaricato o non eseguito).'); }, 15000);
+      })();
+    </script>
     <script type="module" src="./assets/app.js?v=__V__"></script>
   </body>
 </html>
