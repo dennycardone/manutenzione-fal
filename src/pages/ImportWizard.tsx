@@ -83,6 +83,13 @@ export function ImportWizard() {
         setStep('done');
         return;
       }
+      if (confirm(`Non riesco a confermare in automatico che il file sia “${st.docTitle(target)}”. Se sei sicuro che sia lo stesso documento (stessa revisione), premi OK per collegarlo comunque.`)) {
+        await st.attach(target, file, file.name, r.type === 'known' ? r.pageOffset : 0);
+        await st.log({ fileName: file.name, kind: 'PDF collegato', summary: [st.docTitle(target), 'Collegato su conferma dell’operatore'] });
+        setMsg([`Collegato a “${st.docTitle(target)}” su tua conferma.`, 'Controlla in un’attività che la pagina aperta sia quella giusta.']);
+        setStep('done');
+        return;
+      }
       setErr(
         'Il file non corrisponde alla revisione analizzata. La struttura di questi documenti (tabelle PRC/PdM e Manuale Generale) viene estratta dallo script di estrazione, che genera un nuovo pacchetto dati: chiedi un pacchetto aggiornato e caricalo da Impostazioni. Nel frattempo puoi importarlo come “Altro” per consultarlo e cercarci dentro.',
       );

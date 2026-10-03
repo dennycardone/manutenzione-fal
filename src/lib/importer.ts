@@ -30,20 +30,25 @@ export async function identify(file: File, ds: Dataset | null): Promise<Identifi
     const h = await sha256(buf);
     const bySha = ds.documents.find((d) => d.sha256 && d.sha256 === h);
     if (bySha) return { type: 'known', docId: bySha.id, pageOffset: 0, how: 'impronta digitale identica al documento analizzato' };
-    // firma testuale nelle prime pagine
+    // firma testuale nelle prime pagine (spazi rimossi: pdf.js può spezzare le parole), poi nome file + numero pagine
     const pdf = await openPdf(buf);
     let text = '';
-    for (let i = 1; i <= Math.min(3, pdf.numPages); i++) {
+    for (let i = 1; i <= Math.min(6, pdf.numPages); i++) {
       const tc = await (await pdf.getPage(i)).getTextContent();
-      text += (tc.items as any[]).map((x) => x.str).join(' ') + '\n';
+      text += (tc.items as any[]).map((x) => x.str).join('') + '\n';
     }
+    const flat = text.replace(/\s+/g, '');
+    const fk = manualKey(file.name);
     for (const d of ds.documents) {
-      if (!d.signature?.length) continue;
-      if (d.signature.every((s) => text.includes(s)) || (d.pageCount && pdf.numPages === d.pageCount && d.signature.some((s) => text.includes(s)))) {
+      const sig = (d.signature || []).map((x) => x.replace(/\s+/g, ''));
+      const bySig = sig.length > 0 && (sig.every((x) => flat.includes(x)) || (d.pageCount === pdf.numPages && sig.some((x) => flat.includes(x))));
+      const dk = manualKey(d.fileName || '');
+      const byName = !!dk && fk === dk && (!d.pageCount || d.pageCount === pdf.numPages);
+      if (bySig || byName) {
         let offset = 0;
         if (d.id === 'stadler') offset = await detectStadlerOffset(pdf);
         void ((pdf as any).loadingTask?.destroy?.() ?? (pdf as any).destroy?.());
-        return { type: 'known', docId: d.id, pageOffset: offset, how: `contiene "${d.signature[0]}"` };
+        return { type: 'known', docId: d.id, pageOffset: offset, how: bySig ? `contiene "${d.signature![0]}"` : `nome file e numero di pagine (${pdf.numPages}) corrispondenti` };
       }
     }
     void ((pdf as any).loadingTask?.destroy?.() ?? (pdf as any).destroy?.());
@@ -59,7 +64,7 @@ async function detectStadlerOffset(pdf: Awaited<ReturnType<typeof openPdf>>): Pr
       if (n < 1 || n > pdf.numPages) continue;
       const tc = await (await pdf.getPage(n)).getTextContent();
       const t = (tc.items as any[]).map((x) => x.str).join(' ');
-      const m = t.match(/Pagina\s+(\d+)\s*\/\s*174/);
+      const m = t.match(/Pagina\s*(\d+)\s*\/\s*174/);
       if (m) return n - Number(m[1]);
     }
   }
